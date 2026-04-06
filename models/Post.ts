@@ -23,7 +23,11 @@ const PostSchema = new Schema({
     type: Date,
     default: Date.now,
   },
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
+
 
 const Post = models.Post || model("Post", PostSchema);
 

@@ -1,89 +1,88 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-const DATA_FILE = path.join(process.cwd(), "backend", "posts.json");
-
-// Helper to read data
-const readData = () => {
-  if (!fs.existsSync(DATA_FILE)) return {};
-  const content = fs.readFileSync(DATA_FILE, "utf-8");
-  return JSON.parse(content);
-};
-
-// Helper to write data
-const writeData = (data: any) => {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
-};
+import connectDB from "@/lib/mongodb";
+import Post from "@/models/Post";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get("category");
-  
-  const data = readData();
-  
-  if (category) {
-    return NextResponse.json(data[category.toLowerCase()] || []);
+  try {
+    await connectDB();
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get("category");
+
+    let query = {};
+    if (category) {
+      query = { category: category.toLowerCase() };
+    }
+
+    const posts = await Post.find(query).sort({ createdAt: -1 });
+    
+    if (category) {
+      return NextResponse.json(posts);
+    }
+
+    // If no category, group them by category like the original JSON structure
+    // or just return all. The original JSON structure was { category: [posts] }.
+    // Let's keep it consistent if needed, but returning all posts is more standard.
+    // However, the admin dashboard might expect the grouped format.
+    
+    const groupedPosts = posts.reduce((acc: any, post: any) => {
+      const cat = post.category.toLowerCase();
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(post);
+      return acc;
+    }, {});
+
+    return NextResponse.json(groupedPosts);
+  } catch (error) {
+    console.error("GET Error:", error);
+    return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 });
   }
-  
-  return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
   try {
+    await connectDB();
     const body = await request.json();
     const { category, title, price, description, image } = body;
-    
+
     if (!category || !title) {
       return NextResponse.json({ error: "Category and Title are required" }, { status: 400 });
     }
-    
-    const data = readData();
-    const catKey = category.toLowerCase();
-    
-    if (!data[catKey]) {
-      data[catKey] = [];
-    }
-    
-    const newPost = {
-      id: Date.now().toString(),
+
+    const newPost = await Post.create({
+      category: category.toLowerCase(),
       title,
       price,
       description,
       image,
-      createdAt: new Date().toISOString()
-    };
-    
-    data[catKey].unshift(newPost); // Add to beginning
-    writeData(data);
-    
+    });
+
     return NextResponse.json({ message: "Post published successfully!", post: newPost });
   } catch (error) {
+    console.error("POST Error:", error);
     return NextResponse.json({ error: "Failed to save post" }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
     const id = searchParams.get("id");
-    
-    if (!category || !id) {
-      return NextResponse.json({ error: "Category and ID are required" }, { status: 400 });
+
+    if (!id) {
+      return NextResponse.json({ error: "Post ID is required" }, { status: 400 });
     }
-    
-    const data = readData();
-    const catKey = category.toLowerCase();
-    
-    if (data[catKey]) {
-      data[catKey] = data[catKey].filter((post: any) => post.id !== id);
-      writeData(data);
-      return NextResponse.json({ message: "Post deleted successfully!" });
-    } else {
-      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+
+    const deletedPost = await Post.findByIdAndDelete(id);
+
+    if (!deletedPost) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
+
+    return NextResponse.json({ message: "Post deleted successfully!" });
   } catch (error) {
+    console.error("DELETE Error:", error);
     return NextResponse.json({ error: "Failed to delete post" }, { status: 500 });
   }
 }
+
