@@ -33,19 +33,19 @@ export default function TrustSection() {
         <div className="flex flex-col space-y-8">
           
           {/* Header */}
-          <div>
+          <div className="text-center lg:text-left">
             <div className="inline-block px-3 py-1 mb-6 rounded-full border border-green-500/30 bg-green-500/10">
-              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#22c55e] uppercase">
+              <span className="text-[9px] sm:text-[10px] md:text-xs font-bold tracking-widest text-[#22c55e] uppercase">
                 Trust & Legacy
               </span>
             </div>
             
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6 leading-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white mb-6 leading-tight">
               Hum Par Aitmaad<br />
               <span className="text-[#22c55e]">Kyun Karein?</span>
             </h2>
             
-            <p className="text-gray-300 text-[15px] md:text-base leading-relaxed max-w-lg">
+            <p className="text-gray-300 text-sm sm:text-[15px] md:text-base leading-relaxed max-w-lg mx-auto lg:mx-0">
               Kamayabi Roohani Markaz hamesha Quran-e-Pak aur Sunnat ki roshni mein rehnumai karta hai, jahan har maslay ka mukammal shari'i aur roohani hal mojood hai.
             </p>
           </div>

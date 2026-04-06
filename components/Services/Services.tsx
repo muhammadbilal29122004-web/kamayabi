@@ -31,12 +31,12 @@ export default function Services() {
       <div className="max-w-7xl mx-auto px-4 flex flex-col items-center">
         
         {/* Header Section */}
-        <h2 className="text-[#0A3D24] font-serif text-4xl md:text-[3.2rem] font-bold mb-4 text-center">
+        <h2 className="text-[#0A3D24] font-serif text-3xl sm:text-4xl md:text-[3.2rem] font-bold mb-4 text-center">
           Muntakhib Khidmaat
         </h2>
         
         {/* Decorative Line Under Header */}
-        <div className="h-[2px] w-64 md:w-96 mb-16 relative">
+        <div className="h-[2px] w-48 sm:w-64 md:w-96 mb-12 sm:mb-16 relative">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#22C55E]/80 to-transparent"></div>
         </div>
 

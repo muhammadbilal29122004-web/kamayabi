@@ -72,35 +72,35 @@ export default function Offers() {
         }}
       ></div>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20 items-start relative z-10">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start relative z-10">
         
         {/* Left Column (Content) */}
-        <div className="flex flex-col items-start lg:col-span-5 lg:sticky lg:top-32">
+        <div className="flex flex-col items-center lg:items-start text-center lg:text-left lg:col-span-5 lg:sticky lg:top-32">
           {/* Pill Badge */}
-          <div className="inline-flex items-center gap-3 border border-[#0A8B42]/20 bg-white shadow-sm px-5 py-2 rounded-full mb-8">
+          <div className="inline-flex items-center gap-3 border border-[#0A8B42]/20 bg-white shadow-sm px-4 sm:px-5 py-2 rounded-full mb-6 md:mb-8">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0A8B42] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0A8B42]"></span>
             </span>
-            <span className="text-[#0A8B42] text-[10px] font-bold tracking-[0.3em] uppercase">SPECIAL OFFERS</span>
+            <span className="text-[#0A8B42] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">SPECIAL OFFERS</span>
           </div>
           
-          <h2 className="font-serif text-[4rem] md:text-[5.5rem] leading-[1] mb-8">
+          <h2 className="font-serif text-[2.8rem] sm:text-[4rem] md:text-[5.5rem] leading-[1] mb-6 md:mb-8">
             <span className="text-[#0A3D24] font-medium block">Khususi</span>
             <span className="text-[#0A8B42] font-bold block italic">Peshkash</span>
           </h2>
           
-          <div className="w-20 h-1 bg-gradient-to-r from-[#0A8B42] to-transparent rounded-full mb-10"></div>
+          <div className="w-16 sm:w-20 h-1 bg-gradient-to-r from-[#0A8B42] to-transparent rounded-full mb-8 md:mb-10 lg:ml-0"></div>
           
-          <p className="text-[#475569] text-lg leading-relaxed mb-12 max-w-md">
+          <p className="text-[#475569] text-base sm:text-lg leading-relaxed mb-10 md:mb-12 max-w-sm sm:max-w-md">
             Humari khusoosi khidmaat aapki roohani aur dunyawi pareshaniyon ka mukammal aur mustaqil hal paish karti hain. Aaj hi rabta karein.
           </p>
           
           <Link 
             href="/contact"
-            className="group relative py-4 px-10 overflow-hidden rounded-full bg-[#0A3D24] text-white transition-all shadow-xl hover:shadow-[#0A3D24]/30 inline-block text-center"
+            className="group relative py-3.5 sm:py-4 px-8 sm:px-10 overflow-hidden rounded-full bg-[#0A3D24] text-white transition-all shadow-xl hover:shadow-[#0A3D24]/30 inline-block text-center"
           >
-            <span className="relative z-10 font-bold text-xs tracking-[0.2em]">SAB OFFERS DEKHEIN</span>
+            <span className="relative z-10 font-bold text-[10px] sm:text-[11px] md:text-xs tracking-[0.15em] sm:tracking-[0.2em]">SAB OFFERS DEKHEIN</span>
             <div className="absolute inset-0 bg-[#0A8B42] transform translate-y-full transition-transform duration-300 group-hover:translate-y-0"></div>
           </Link>
         </div>
