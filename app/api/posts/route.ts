@@ -7,13 +7,25 @@ export async function GET(request: Request) {
     await connectDB();
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
+    const summary = searchParams.get("summary");
+
+    if (summary === "1") {
+      const rows = await Post.aggregate([
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+      ]);
+      const counts = rows.reduce((acc: Record<string, number>, r: any) => {
+        if (r?._id) acc[String(r._id).toLowerCase()] = Number(r.count || 0);
+        return acc;
+      }, {});
+      return NextResponse.json(counts);
+    }
 
     let query = {};
     if (category) {
       query = { category: category.toLowerCase() };
     }
 
-    const posts = await Post.find(query).sort({ createdAt: -1 });
+    const posts = await Post.find(query).sort({ createdAt: -1 }).lean();
     
     if (category) {
       return NextResponse.json(posts);

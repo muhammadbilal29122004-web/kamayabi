@@ -23,6 +23,10 @@ import {
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [orderStatusSaving, setOrderStatusSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
@@ -33,10 +37,45 @@ export default function AdminPanel() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const compressImageToDataUrl = async (file: File) => {
+    // Keep uploads snappy: downscale + webp
+    const MAX_DIM = 1400;
+    const QUALITY = 0.78;
+    const MIME = "image/webp";
+
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
+    const targetW = Math.max(1, Math.round(bitmap.width * scale));
+    const targetH = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not supported");
+
+    ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+
+    const blob: Blob | null = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b), MIME, QUALITY);
+    });
+
+    if (!blob) throw new Error("Failed to compress image");
+
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Failed to read compressed image"));
+      reader.readAsDataURL(blob);
+    });
+
+    return dataUrl;
+  };
+
   // Fetch all data for counts and dashboard
   const fetchAllData = async () => {
     try {
-      const response = await fetch("/api/posts");
+      const response = await fetch("/api/posts?summary=1");
       const data = await response.json();
       setAllData(data);
     } catch (err) {
@@ -66,10 +105,52 @@ export default function AdminPanel() {
     }
   };
 
+  const updateOrderStatus = async (orderId: string, status: "Pending" | "Completed") => {
+    setOrderStatusSaving(true);
+    try {
+      const res = await fetch(`/api/orders?id=${encodeURIComponent(orderId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || "Failed to update order status");
+      }
+
+      const payload = await res.json();
+      const updatedOrder = payload?.order;
+      if (updatedOrder) {
+        const updatedId = (updatedOrder.id ?? updatedOrder._id) as string;
+        setAllOrders((prev) =>
+          prev.map((o) => {
+            const oid = (o.id ?? o._id) as string;
+            return oid === updatedId ? { ...o, ...updatedOrder } : o;
+          })
+        );
+      } else {
+        // fallback optimistic update
+        setAllOrders((prev) =>
+          prev.map((o) => {
+            const oid = (o.id ?? o._id) as string;
+            return oid === orderId ? { ...o, status } : o;
+          })
+        );
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to update order status");
+    } finally {
+      setOrderStatusSaving(false);
+    }
+  };
+
   useEffect(() => {
     fetchAllData();
     if (activeTab === "Orders") {
       fetchOrders();
+      setSelectedOrderId(null);
+      setOrdersPage(1);
     } else if (activeTab !== "Dashboard") {
       fetchCategoryItems(activeTab);
     }
@@ -78,11 +159,17 @@ export default function AdminPanel() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Guard against huge files that make publish slow
+      if (file.size > 8 * 1024 * 1024) {
+        alert("Image is too large. Please upload an image under 8MB.");
+        return;
+      }
+
+      setImageLoading(true);
+      compressImageToDataUrl(file)
+        .then((dataUrl) => setSelectedImage(dataUrl))
+        .catch(() => alert("Failed to process image. Please try another image."))
+        .finally(() => setImageLoading(false));
     }
   };
 
@@ -155,6 +242,15 @@ export default function AdminPanel() {
   ];
 
   const categories = sidebarLinks.filter(l => l.name !== "Dashboard" && l.name !== "Orders");
+  const ORDERS_PAGE_SIZE = 8;
+  const totalOrdersPages = Math.max(1, Math.ceil(allOrders.length / ORDERS_PAGE_SIZE));
+  const visibleOrders = allOrders.slice(
+    (ordersPage - 1) * ORDERS_PAGE_SIZE,
+    ordersPage * ORDERS_PAGE_SIZE
+  );
+  const selectedOrder = selectedOrderId
+    ? allOrders.find((o) => (o.id ?? o._id) === selectedOrderId) ?? null
+    : null;
 
   return (
     <div className="fixed inset-0 bg-[#f8fafc] z-[9999] flex overflow-hidden font-sans">
@@ -244,40 +340,176 @@ export default function AdminPanel() {
                   <div>
                     <p className="text-gray-500 text-sm font-medium">{cat.name} Posts</p>
                     <h3 className="text-3xl font-bold text-gray-900 mt-1">
-                      {allData[cat.name.toLowerCase()]?.length || 0}
+                      {allData[cat.name.toLowerCase()] ?? 0}
                     </h3>
                   </div>
                 </div>
               ))}
             </div>
           ) : activeTab === "Orders" ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-280px)]">
-              <div className="p-6 border-b border-gray-50 bg-gray-50/50">
-                <h3 className="font-bold text-gray-900 text-lg">All Customer Orders</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left: Orders grid */}
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-280px)]">
+                <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg">All Customer Orders</h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Showing {allOrders.length === 0 ? 0 : (ordersPage - 1) * ORDERS_PAGE_SIZE + 1}
+                      {" - "}
+                      {Math.min(ordersPage * ORDERS_PAGE_SIZE, allOrders.length)} of {allOrders.length}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setOrdersPage((p) => Math.max(1, p - 1))}
+                      disabled={ordersPage <= 1}
+                      className="px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Prev
+                    </button>
+                    <div className="text-sm font-semibold text-gray-700">
+                      {ordersPage} / {totalOrdersPages}
+                    </div>
+                    <button
+                      onClick={() => setOrdersPage((p) => Math.min(totalOrdersPages, p + 1))}
+                      disabled={ordersPage >= totalOrdersPages}
+                      className="px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
+                  {allOrders.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                      {visibleOrders.map((order) => {
+                        const orderId = (order.id ?? order._id) as string;
+                        const isSelected = selectedOrderId === orderId;
+                        return (
+                          <button
+                            key={orderId}
+                            onClick={() => setSelectedOrderId(orderId)}
+                            className={`text-left rounded-2xl border p-4 transition-all shadow-sm hover:shadow-md hover:-translate-y-[1px] ${
+                              isSelected ? "border-green-500 ring-2 ring-green-100" : "border-gray-100 hover:border-green-200"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-bold text-gray-900 leading-tight line-clamp-2">
+                                  {order.customerName || "Unknown Customer"}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                  {order.postTitle || "Untitled Item"}
+                                </p>
+                              </div>
+                              <div className="shrink-0 bg-green-50 text-green-700 text-xs font-bold px-2 py-1 rounded-lg">
+                                {order.status || "Pending"}
+                              </div>
+                            </div>
+
+                            <div className="mt-3">
+                              <div className="text-sm bg-gray-50 text-gray-700 px-3 py-2 rounded-xl font-semibold">
+                                {order.postPrice ? `Rs. ${order.postPrice}` : "Price N/A"}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-400 mt-2">
+                                <Clock size={12} />
+                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-12 text-center text-gray-400">No orders found.</div>
+                  )}
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-                {allOrders.length > 0 ? (
-                  allOrders.map((order) => (
-                    <div key={order.id} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group">
-                      <div>
-                        <p className="font-bold text-gray-900">{order.customerName}</p>
-                        <p className="text-sm text-gray-500">Phone: {order.customerPhone}</p>
-                        <p className="text-sm text-gray-500">Address: {order.customerAddress}</p>
-                        <div className="mt-2 text-sm bg-green-50 text-green-700 px-3 py-1 rounded inline-block font-semibold">
-                          Item: {order.postTitle} {order.postPrice ? `(Rs. ${order.postPrice})` : ""}
+
+              {/* Right: Selected order details */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-280px)]">
+                <div className="p-6 border-b border-gray-50 bg-gray-50/50">
+                  <h3 className="font-bold text-gray-900 text-lg">Order Details</h3>
+                  <p className="text-sm text-gray-500 mt-1">Click an order card to view details.</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
+                  {selectedOrder ? (
+                    <div className="space-y-6">
+                      <div className="rounded-2xl border border-gray-100 p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500 font-semibold">Customer</p>
+                            <p className="text-xl font-bold text-gray-900 mt-1">
+                              {selectedOrder.customerName || "Unknown Customer"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={(selectedOrder.status || "Pending") as string}
+                              onChange={(e) =>
+                                updateOrderStatus(
+                                  ((selectedOrder.id ?? selectedOrder._id) as string) || "",
+                                  e.target.value as "Pending" | "Completed"
+                                )
+                              }
+                              disabled={orderStatusSaving}
+                              className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-800 outline-none focus:ring-2 focus:ring-green-100 disabled:opacity-60"
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Completed">Completed</option>
+                            </select>
+                            {orderStatusSaving ? (
+                              <div className="text-xs text-gray-400 font-semibold">Saving...</div>
+                            ) : null}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400 mt-2">
+
+                        <div className="mt-4 text-sm bg-green-50 text-green-700 px-3 py-2 rounded-xl inline-flex font-semibold">
+                          Item: {selectedOrder.postTitle}{" "}
+                          {selectedOrder.postPrice ? `(Rs. ${selectedOrder.postPrice})` : ""}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mt-3">
                           <Clock size={12} />
-                          {new Date(order.createdAt).toLocaleDateString()}
+                          {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "—"}
                         </div>
                       </div>
+
+                      <div className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Address</p>
+                          <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">
+                            {selectedOrder.customerAddress || "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Phone Number</p>
+                          <p className="text-sm text-gray-600 mt-1">{selectedOrder.customerPhone || "—"}</p>
+                        </div>
+                        {selectedOrder.customerEmail ? (
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">Email</p>
+                            <p className="text-sm text-gray-600 mt-1">{selectedOrder.customerEmail}</p>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedOrderId(null)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                      >
+                        Close
+                      </button>
                     </div>
-                  ))
-                ) : (
-                  <div className="p-12 text-center text-gray-400">
-                    No orders found.
-                  </div>
-                )}
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                      Select an order to view details.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
@@ -369,6 +601,11 @@ export default function AdminPanel() {
                     >
                       {selectedImage ? (
                         <img src={selectedImage} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                      ) : imageLoading ? (
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-600 mx-auto mb-2"></div>
+                          <p className="text-xs text-gray-500">Optimizing image...</p>
+                        </div>
                       ) : (
                         <div className="text-center">
                           <Plus className="text-gray-300 mx-auto mb-2" size={32} />

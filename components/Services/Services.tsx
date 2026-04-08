@@ -43,9 +43,10 @@ export default function Services() {
         {/* Services Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
           {services.map((service, index) => (
-            <div 
+            <Link
               key={index}
-              className="relative group rounded-[2rem] overflow-hidden aspect-[3/4.2] sm:aspect-[3/4.5] shadow-lg hover:shadow-2xl transition-all duration-300"
+              href={`/${service.title.toLowerCase()}`}
+              className="relative group rounded-[2rem] overflow-hidden aspect-[3/4.2] sm:aspect-[3/4.5] shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-green-200"
             >
               {/* Background Image using Next.js Image component */}
               <Image 
@@ -60,14 +61,11 @@ export default function Services() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#021A0A] via-[#021A0A]/60 to-transparent/10 z-10"></div>
 
               {/* Arrow Icon at Bottom-Right */}
-              <Link 
-                href="/contact"
-                className="absolute bottom-6 right-6 z-30 opacity-0 transform translate-x-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-0"
-              >
+              <div className="absolute bottom-6 right-6 z-30 opacity-0 transform translate-x-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-0">
                 <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-full border border-white/20 group-hover:bg-[#22C55E] group-hover:border-[#22C55E] transition-all duration-300 shadow-lg">
                   <ArrowUpRight className="text-white w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
                 </div>
-              </Link>
+              </div>
 
               {/* Card Content (Positioned at Bottom) */}
               <div className="absolute bottom-0 inset-x-0 p-8 flex flex-col items-center text-center z-20">
@@ -80,7 +78,7 @@ export default function Services() {
                 {/* Small Green Line */}
                 <div className="w-8 h-[2px] bg-[#22C55E] rounded-full"></div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
         

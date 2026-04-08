@@ -20,6 +20,9 @@ const OrderSchema = new Schema({
     type: String,
     required: true,
   },
+  postCategory: {
+    type: String,
+  },
   postPrice: {
     type: String,
   },

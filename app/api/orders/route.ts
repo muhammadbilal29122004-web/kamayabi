@@ -61,3 +61,41 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Failed to delete order" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    await connectDB();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { status } = body ?? {};
+
+    const allowed = new Set(["Pending", "Completed"]);
+    if (!status || typeof status !== "string" || !allowed.has(status)) {
+      return NextResponse.json(
+        { error: "Invalid status. Allowed: Pending, Completed" },
+        { status: 400 }
+      );
+    }
+
+    const updated = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!updated) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: "Order updated successfully!", order: updated });
+  } catch (error) {
+    console.error("PATCH Error:", error);
+    return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
+  }
+}

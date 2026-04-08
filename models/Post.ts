@@ -32,6 +32,7 @@ const PostSchema = new Schema({
   toObject: { virtuals: true }
 });
 
+PostSchema.index({ category: 1, createdAt: -1 });
 
 const Post = models.Post || model("Post", PostSchema);
 
