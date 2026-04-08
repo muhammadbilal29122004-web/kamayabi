@@ -16,7 +16,8 @@ import {
   Search,
   Plus,
   Trash2,
-  Clock
+  Clock,
+  ShoppingCart
 } from "lucide-react";
 
 export default function AdminPanel() {
@@ -25,9 +26,11 @@ export default function AdminPanel() {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [allowAddToCart, setAllowAddToCart] = useState(false);
   const [loading, setLoading] = useState(false);
   const [allData, setAllData] = useState<any>({});
   const [categoryPosts, setCategoryPosts] = useState<any[]>([]);
+  const [allOrders, setAllOrders] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch all data for counts and dashboard
@@ -52,9 +55,22 @@ export default function AdminPanel() {
     }
   };
 
+  // Fetch orders
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch("/api/orders");
+      const data = await response.json();
+      setAllOrders(data);
+    } catch (err) {
+      console.error("Error fetching orders", err);
+    }
+  };
+
   useEffect(() => {
     fetchAllData();
-    if (activeTab !== "Dashboard") {
+    if (activeTab === "Orders") {
+      fetchOrders();
+    } else if (activeTab !== "Dashboard") {
       fetchCategoryItems(activeTab);
     }
   }, [activeTab]);
@@ -82,7 +98,8 @@ export default function AdminPanel() {
           title,
           price,
           description,
-          image: selectedImage
+          image: selectedImage,
+          allowAddToCart
         })
       });
       if (response.ok) {
@@ -90,6 +107,7 @@ export default function AdminPanel() {
         setTitle("");
         setPrice("");
         setDescription("");
+        setAllowAddToCart(false);
         setSelectedImage(null);
         fetchCategoryItems(activeTab);
         fetchAllData();
@@ -125,6 +143,7 @@ export default function AdminPanel() {
 
   const sidebarLinks = [
     { name: "Dashboard", icon: LayoutDashboard },
+    { name: "Orders", icon: ShoppingCart },
     { name: "Surah", icon: BookOpen },
     { name: "Naqsh", icon: ShieldCheck },
     { name: "Taveez", icon: ScrollText },
@@ -135,7 +154,7 @@ export default function AdminPanel() {
     { name: "Stone", icon: Mountain },
   ];
 
-  const categories = sidebarLinks.filter(l => l.name !== "Dashboard");
+  const categories = sidebarLinks.filter(l => l.name !== "Dashboard" && l.name !== "Orders");
 
   return (
     <div className="fixed inset-0 bg-[#f8fafc] z-[9999] flex overflow-hidden font-sans">
@@ -230,6 +249,36 @@ export default function AdminPanel() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : activeTab === "Orders" ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-280px)]">
+              <div className="p-6 border-b border-gray-50 bg-gray-50/50">
+                <h3 className="font-bold text-gray-900 text-lg">All Customer Orders</h3>
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
+                {allOrders.length > 0 ? (
+                  allOrders.map((order) => (
+                    <div key={order.id} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group">
+                      <div>
+                        <p className="font-bold text-gray-900">{order.customerName}</p>
+                        <p className="text-sm text-gray-500">Phone: {order.customerPhone}</p>
+                        <p className="text-sm text-gray-500">Address: {order.customerAddress}</p>
+                        <div className="mt-2 text-sm bg-green-50 text-green-700 px-3 py-1 rounded inline-block font-semibold">
+                          Item: {order.postTitle} {order.postPrice ? `(Rs. ${order.postPrice})` : ""}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mt-2">
+                          <Clock size={12} />
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-12 text-center text-gray-400">
+                    No orders found.
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -327,6 +376,18 @@ export default function AdminPanel() {
                         </div>
                       )}
                     </div>
+                  </div>
+                  <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <input 
+                      type="checkbox" 
+                      id="allowAddToCart"
+                      checked={allowAddToCart}
+                      onChange={(e) => setAllowAddToCart(e.target.checked)}
+                      className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <label htmlFor="allowAddToCart" className="text-sm font-semibold text-gray-700 select-none cursor-pointer">
+                      Enable "Add to Cart" for this item
+                    </label>
                   </div>
                   <button 
                     onClick={publishPost}

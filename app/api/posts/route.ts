@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const body = await request.json();
-    const { category, title, price, description, image } = body;
+    const { category, title, price, description, image, allowAddToCart } = body;
 
     if (!category || !title) {
       return NextResponse.json({ error: "Category and Title are required" }, { status: 400 });
@@ -54,6 +54,7 @@ export async function POST(request: Request) {
       price,
       description,
       image,
+      allowAddToCart: allowAddToCart || false,
     });
 
     return NextResponse.json({ message: "Post published successfully!", post: newPost });
