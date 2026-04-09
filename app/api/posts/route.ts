@@ -98,6 +98,16 @@ export async function POST(request: Request) {
         { status: 503 }
       );
     }
+    if (
+      message.toLowerCase().includes("invalid cloud_name") ||
+      message.toLowerCase().includes("invalid api key") ||
+      message.toLowerCase().includes("must supply api_key")
+    ) {
+      return NextResponse.json(
+        { error: "Cloudinary credentials are invalid. Check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET." },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({ error: message || "Failed to save post" }, { status: 500 });
   }
 }

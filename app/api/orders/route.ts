@@ -46,7 +46,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Order placed successfully!", order: newOrder });
   } catch (error) {
     console.error("POST Error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "Unexpected server error while creating order.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

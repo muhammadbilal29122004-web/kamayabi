@@ -146,9 +146,15 @@ export default function CategoryClient({
           postPrice: selectedPost?.price,
         }),
       });
-      const payload = await response.json().catch(() => ({} as { error?: string }));
+      const rawText = await response.text();
+      let payload: { error?: string } = {};
+      try {
+        payload = rawText ? (JSON.parse(rawText) as { error?: string }) : {};
+      } catch {
+        payload = {};
+      }
       if (!response.ok) {
-        throw new Error(payload.error || "Failed to place order.");
+        throw new Error(payload.error || rawText || `Failed to place order. (HTTP ${response.status})`);
       }
       alert("Order placed successfully! We will contact you soon.");
       setShowModal(false);
@@ -156,8 +162,13 @@ export default function CategoryClient({
       setPaymentMethod("JAZZCASH_EASYPAISA");
       setTransactionId("");
       setPaymentReference("");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "Unexpected order error. Please check server logs.";
       alert(message);
     } finally {
       setOrderLoading(false);

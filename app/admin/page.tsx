@@ -560,8 +560,10 @@ export default function AdminPanel() {
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
                   {categoryPosts.length > 0 ? (
-                    categoryPosts.map((post) => (
-                      <div key={post.id} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group">
+                    categoryPosts.map((post, index) => {
+                      const postId = (post.id ?? post._id ?? `${post.title ?? "post"}-${index}`) as string;
+                      return (
+                      <div key={postId} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group">
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 border border-gray-100 shrink-0">
                             {post.image ? (
@@ -582,13 +584,13 @@ export default function AdminPanel() {
                           </div>
                         </div>
                         <button 
-                          onClick={() => deletePost(post.id)}
+                          onClick={() => deletePost(postId)}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                         >
                           <Trash2 size={20} />
                         </button>
                       </div>
-                    ))
+                    )})
                   ) : (
                     <div className="p-12 text-center text-gray-400">
                       No posts found in this category.
