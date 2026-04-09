@@ -390,7 +390,7 @@ export default function CategoryClient({
                       <label className="text-sm font-semibold text-gray-700 block mb-1">Transaction ID</label>
                       <input
                         type="text"
-                        required={paymentMethod !== "COD"}
+                        required
                         value={transactionId}
                         onChange={(e) => setTransactionId(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
@@ -401,7 +401,7 @@ export default function CategoryClient({
                       <label className="text-sm font-semibold text-gray-700 block mb-1">Screenshot / Reference Link</label>
                       <input
                         type="text"
-                        required={paymentMethod !== "COD"}
+                        required
                         value={paymentReference}
                         onChange={(e) => setPaymentReference(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
