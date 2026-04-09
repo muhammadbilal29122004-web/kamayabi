@@ -146,18 +146,19 @@ export default function CategoryClient({
           postPrice: selectedPost?.price,
         }),
       });
-      if (response.ok) {
-        alert("Order placed successfully! We will contact you soon.");
-        setShowModal(false);
-        setOrderForm({ name: "", motherName: "", address: "", phone: "" });
-        setPaymentMethod("JAZZCASH_EASYPAISA");
-        setTransactionId("");
-        setPaymentReference("");
-      } else {
-        alert("Failed to place order.");
+      const payload = await response.json().catch(() => ({} as { error?: string }));
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to place order.");
       }
-    } catch {
-      alert("Error placing order.");
+      alert("Order placed successfully! We will contact you soon.");
+      setShowModal(false);
+      setOrderForm({ name: "", motherName: "", address: "", phone: "" });
+      setPaymentMethod("JAZZCASH_EASYPAISA");
+      setTransactionId("");
+      setPaymentReference("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(message);
     } finally {
       setOrderLoading(false);
     }
