@@ -76,6 +76,7 @@ export default function AdminPanel() {
   const fetchAllData = async () => {
     try {
       const response = await fetch("/api/posts?summary=1");
+      if (!response.ok) return;
       const data = await response.json();
       setAllData(data);
     } catch (err) {
@@ -87,6 +88,10 @@ export default function AdminPanel() {
   const fetchCategoryItems = async (cat: string) => {
     try {
       const response = await fetch(`/api/posts?category=${cat}`);
+      if (!response.ok) {
+        setCategoryPosts([]);
+        return;
+      }
       const data = await response.json();
       setCategoryPosts(data);
     } catch (err) {
@@ -199,10 +204,11 @@ export default function AdminPanel() {
         fetchCategoryItems(activeTab);
         fetchAllData();
       } else {
-        alert("Failed to publish");
+        const payload = await response.json().catch(() => ({}));
+        alert(payload?.error || "Failed to publish");
       }
-    } catch (err) {
-      alert("Error publishing post");
+    } catch (err: any) {
+      alert(err?.message || "Error publishing post");
     } finally {
       setLoading(false);
     }
@@ -488,6 +494,39 @@ export default function AdminPanel() {
                         <div>
                           <p className="text-sm font-bold text-gray-900">Phone Number</p>
                           <p className="text-sm text-gray-600 mt-1">{selectedOrder.customerPhone || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Mother Name</p>
+                          <p className="text-sm text-gray-600 mt-1">{selectedOrder.motherName || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Payment Method</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {selectedOrder.paymentMethod === "JAZZCASH_EASYPAISA"
+                              ? "JazzCash / EasyPaisa"
+                              : selectedOrder.paymentMethod === "BANK_TRANSFER"
+                                ? "Bank Transfer"
+                                : "Cash on Delivery"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Transaction ID</p>
+                          <p className="text-sm text-gray-600 mt-1">{selectedOrder.transactionId || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Screenshot / Reference</p>
+                          {selectedOrder.paymentReference ? (
+                            <a
+                              href={selectedOrder.paymentReference}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-emerald-700 font-semibold hover:underline break-all"
+                            >
+                              {selectedOrder.paymentReference}
+                            </a>
+                          ) : (
+                            <p className="text-sm text-gray-600 mt-1">—</p>
+                          )}
                         </div>
                         {selectedOrder.customerEmail ? (
                           <div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Post from "@/models/Post";
+import { isCloudinaryConfigured, uploadPostImage } from "@/lib/cloudinary";
 
 export async function GET(request: Request) {
   try {
@@ -46,7 +47,14 @@ export async function GET(request: Request) {
     return NextResponse.json(groupedPosts);
   } catch (error) {
     console.error("GET Error:", error);
-    return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message.includes("querySrv ECONNREFUSED")) {
+      return NextResponse.json(
+        { error: "Database DNS connection failed. Check internet/DNS or use Atlas non-SRV Mongo URI." },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json({ error: message || "Failed to fetch posts" }, { status: 500 });
   }
 }
 
@@ -60,19 +68,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Category and Title are required" }, { status: 400 });
     }
 
+    let imageUrl = image;
+    if (typeof image === "string" && image.startsWith("data:image/")) {
+      if (!isCloudinaryConfigured()) {
+        return NextResponse.json(
+          { error: "Cloudinary is not configured. Add CLOUDINARY env vars first." },
+          { status: 500 }
+        );
+      }
+      imageUrl = await uploadPostImage(image);
+    }
+
     const newPost = await Post.create({
       category: category.toLowerCase(),
       title,
       price,
       description,
-      image,
+      image: imageUrl,
       allowAddToCart: allowAddToCart || false,
     });
 
     return NextResponse.json({ message: "Post published successfully!", post: newPost });
   } catch (error) {
     console.error("POST Error:", error);
-    return NextResponse.json({ error: "Failed to save post" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message.includes("querySrv ECONNREFUSED")) {
+      return NextResponse.json(
+        { error: "Database DNS connection failed. Check internet/DNS or use Atlas non-SRV Mongo URI." },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json({ error: message || "Failed to save post" }, { status: 500 });
   }
 }
 
@@ -95,7 +121,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ message: "Post deleted successfully!" });
   } catch (error) {
     console.error("DELETE Error:", error);
-    return NextResponse.json({ error: "Failed to delete post" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message || "Failed to delete post" }, { status: 500 });
   }
 }
 

@@ -4,38 +4,58 @@ import React from 'react';
 
 const topItems = [
   {
-    title: 'Appendent Surah',
+    title: 'Loh Surah',
     subtitle: 'PREMIUM COLLECTION',
     image: '/appendent surah.jpg',
+    href: '/loh',
   },
   {
-    title: 'Bengals Surah',
+    title: 'Cara Surah',
     subtitle: 'PREMIUM COLLECTION',
     image: '/bengals surah.jpg',
+    href: '/cara',
   }
 ];
 
 const bottomItems = [
-  {
-    title: 'Ring Gemestone',
-    subtitle: 'PREMIUM COLLECTION',
-    image: '/ring gemestone.jpg',
-  },
+  // {
+  //   title: 'Ring Gemestone',
+  //   subtitle: 'PREMIUM COLLECTION',
+  //   image: '/ring gemestone.jpg',
+  // },
   {
     title: 'Ring Surah',
     subtitle: 'PREMIUM COLLECTION',
     image: '/ring surah.jpg',
+    href: '/ring',
   },
   {
     title: 'Stone',
     subtitle: 'PREMIUM COLLECTION',
     image: '/stone.jpg',
+    href: '/stone',
   }
 ];
 
-// Helper component for the glass card
-const GlassCard = ({ title, subtitle, image, isTop }: { title: string, subtitle: string, image: string, isTop: boolean }) => (
-  <div className={`relative group rounded-[2rem] overflow-hidden ${isTop ? 'aspect-[4/3] md:aspect-[16/10]' : 'aspect-square md:aspect-[4/4.5]'} shadow-lg hover:shadow-2xl transition-all duration-300`}>
+const GlassCard = ({
+  title,
+  subtitle,
+  image,
+  href,
+  isTop,
+}: {
+  title: string;
+  subtitle: string;
+  image: string;
+  href: string;
+  isTop: boolean;
+}) => (
+  <Link
+    href={href}
+    className={`relative group block rounded-[2rem] overflow-hidden ${
+      isTop ? 'aspect-[4/3] md:aspect-[16/10]' : 'aspect-square md:aspect-[4/4.5]'
+    } shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1`}
+  >
     <Image 
       src={image}
       alt={title}
@@ -44,33 +64,22 @@ const GlassCard = ({ title, subtitle, image, isTop }: { title: string, subtitle:
       sizes={isTop ? "(max-width: 768px) 100vw, 50vw" : "(max-width: 768px) 100vw, 33vw"}
     />
     
-    {/* Very subtle gradient to ensure white text always has contrast if needed, though glass handles most of it */}
-    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none transition-opacity duration-300 opacity-60 group-hover:opacity-80"></div>
+    <div className="absolute inset-0 bg-gradient-to-t from-[#06120b]/85 via-[#06120b]/35 to-transparent"></div>
 
-    {/* Inset Glassmorphism details box */}
-    <div className="absolute bottom-4 inset-x-4 md:bottom-6 md:inset-x-6 z-10 transition-transform duration-300 group-hover:-translate-y-2">
-      <div className="rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 p-4 md:p-5 flex items-center justify-between shadow-xl">
+    <div className="absolute bottom-0 inset-x-0 p-6 md:p-7 z-10">
+      <div className="rounded-2xl border border-white/20 bg-black/20 px-5 py-4 shadow-lg">
         <div className="flex flex-col">
-          <h3 className="text-white font-serif text-lg md:text-xl font-bold mb-1 drop-shadow-sm">
+          <h3 className="text-white font-serif text-2xl md:text-[1.7rem] font-bold leading-tight mb-1">
             {title}
           </h3>
-          <p className="text-[#86e2af] text-[9px] md:text-[10px] font-bold tracking-[0.2em] uppercase drop-shadow-sm">
+          <p className="text-[#8ef0bb] text-[10px] md:text-[11px] font-bold tracking-[0.18em] uppercase">
             {subtitle}
           </p>
+          <div className="w-10 h-[2px] bg-[#22C55E] rounded-full mt-3"></div>
         </div>
-        
-        {/* Arrow Button */}
-        <Link 
-          href="/contact"
-          className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-white/20 border border-white/40 flex items-center justify-center transition-colors duration-300 group-hover:bg-[#00B359]/80 group-hover:border-[#00B359] group-hover:shadow-[0_0_15px_rgba(0,179,89,0.5)]"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transform transition-transform group-hover:translate-x-1">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </Link>
       </div>
     </div>
-  </div>
+  </Link>
 );
 
 export default function Tabarrukat() {
@@ -115,7 +124,7 @@ export default function Tabarrukat() {
           </div>
 
           {/* Bottom Row: 3 Items */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {bottomItems.map((item, index) => (
               <GlassCard key={index} {...item} isTop={false} />
             ))}

@@ -24,7 +24,10 @@ export default function CategoryClient({
   const [posts, setPosts] = useState<ClientPost[]>(initialPosts);
   const [showModal, setShowModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<ClientPost | null>(null);
-  const [orderForm, setOrderForm] = useState({ name: "", phone: "", address: "" });
+  const [orderForm, setOrderForm] = useState({ name: "", motherName: "", address: "", phone: "" });
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "JAZZCASH_EASYPAISA" | "BANK_TRANSFER">("COD");
+  const [transactionId, setTransactionId] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
   const [orderLoading, setOrderLoading] = useState(false);
 
   const Icon = useMemo(() => {
@@ -54,7 +57,12 @@ export default function CategoryClient({
 
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderForm.name || !orderForm.phone || !orderForm.address) return alert("Please fill all details!");
+    if (!orderForm.name || !orderForm.motherName || !orderForm.address || !orderForm.phone) {
+      return alert("Please fill all details!");
+    }
+    if (paymentMethod !== "COD" && (!transactionId || !paymentReference)) {
+      return alert("Please add transaction ID and screenshot/reference link.");
+    }
 
     setOrderLoading(true);
     try {
@@ -63,8 +71,12 @@ export default function CategoryClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerName: orderForm.name,
+          motherName: orderForm.motherName,
           customerPhone: orderForm.phone,
           customerAddress: orderForm.address,
+          paymentMethod,
+          transactionId: transactionId || undefined,
+          paymentReference: paymentReference || undefined,
           postTitle: selectedPost?.title,
           postPrice: selectedPost?.price,
         }),
@@ -72,7 +84,10 @@ export default function CategoryClient({
       if (response.ok) {
         alert("Order placed successfully! We will contact you soon.");
         setShowModal(false);
-        setOrderForm({ name: "", phone: "", address: "" });
+        setOrderForm({ name: "", motherName: "", address: "", phone: "" });
+        setPaymentMethod("COD");
+        setTransactionId("");
+        setPaymentReference("");
       } else {
         alert("Failed to place order.");
       }
@@ -279,18 +294,18 @@ export default function CategoryClient({
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">Phone Number</label>
+                  <label className="text-sm font-semibold text-gray-700 block mb-1">Mother Name</label>
                   <input
                     type="text"
                     required
-                    value={orderForm.phone}
-                    onChange={(e) => setOrderForm({ ...orderForm, phone: e.target.value })}
+                    value={orderForm.motherName}
+                    onChange={(e) => setOrderForm({ ...orderForm, motherName: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
-                    placeholder="Enter phone number"
+                    placeholder="Enter mother name"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">Shipping Address</label>
+                  <label className="text-sm font-semibold text-gray-700 block mb-1">Delivery Address</label>
                   <textarea
                     required
                     rows={3}
@@ -300,6 +315,101 @@ export default function CategoryClient({
                     placeholder="Full delivery address"
                   ></textarea>
                 </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 block mb-1">Contact Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={orderForm.phone}
+                    onChange={(e) => setOrderForm({ ...orderForm, phone: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
+                    placeholder="Enter contact number"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Payment Method</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("COD")}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition ${
+                        paymentMethod === "COD"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      Cash on Delivery
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("JAZZCASH_EASYPAISA")}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition ${
+                        paymentMethod === "JAZZCASH_EASYPAISA"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      JazzCash / EasyPaisa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition ${
+                        paymentMethod === "BANK_TRANSFER"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      Bank Transfer
+                    </button>
+                  </div>
+                </div>
+
+                {paymentMethod === "JAZZCASH_EASYPAISA" ? (
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-sm">
+                    <p className="font-bold text-emerald-800 mb-1">JazzCash / EasyPaisa</p>
+                    <p className="text-gray-700">03352805020 - Hassan Abbas</p>
+                  </div>
+                ) : null}
+
+                {paymentMethod === "BANK_TRANSFER" ? (
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-sm space-y-1">
+                    <p className="font-bold text-emerald-800 mb-1">Bank Alfalah</p>
+                    <p className="text-gray-700"><span className="font-semibold">Account Title:</span> AL-GHAZI TABARRUKAT CENTRE</p>
+                    <p className="text-gray-700"><span className="font-semibold">Account Number:</span> 56385001173284</p>
+                    <p className="text-gray-700"><span className="font-semibold">IBAN:</span> PK25ALFH5638005001173284</p>
+                    <p className="text-gray-700"><span className="font-semibold">Swift Code:</span> ALFHPKKAXXX</p>
+                    <p className="text-gray-700"><span className="font-semibold">Branch:</span> Soldier Bazar Br IBG (5638)</p>
+                  </div>
+                ) : null}
+
+                {paymentMethod !== "COD" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">Transaction ID</label>
+                      <input
+                        type="text"
+                        required={paymentMethod !== "COD"}
+                        value={transactionId}
+                        onChange={(e) => setTransactionId(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
+                        placeholder="Enter transaction ID"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">Screenshot / Reference Link</label>
+                      <input
+                        type="text"
+                        required={paymentMethod !== "COD"}
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
+                        placeholder="Paste screenshot link or reference"
+                      />
+                    </div>
+                  </div>
+                ) : null}
                 <button
                   type="submit"
                   disabled={orderLoading}

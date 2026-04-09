@@ -5,6 +5,10 @@ const OrderSchema = new Schema({
     type: String,
     required: true,
   },
+  motherName: {
+    type: String,
+    required: true,
+  },
   customerEmail: {
     type: String,
   },
@@ -15,6 +19,17 @@ const OrderSchema = new Schema({
   customerAddress: {
     type: String,
     required: true,
+  },
+  paymentMethod: {
+    type: String,
+    enum: ["COD", "JAZZCASH_EASYPAISA", "BANK_TRANSFER"],
+    default: "COD",
+  },
+  transactionId: {
+    type: String,
+  },
+  paymentReference: {
+    type: String,
   },
   postTitle: {
     type: String,

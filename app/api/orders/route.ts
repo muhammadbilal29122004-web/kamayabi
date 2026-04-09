@@ -17,17 +17,28 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const body = await request.json();
-    const { customerName, customerEmail, customerPhone, customerAddress, postTitle, postPrice } = body;
+    const { customerName, motherName, customerEmail, customerPhone, customerAddress, paymentMethod, transactionId, paymentReference, postTitle, postPrice } = body;
 
-    if (!customerName || !customerPhone || !customerAddress || !postTitle) {
+    if (!customerName || !motherName || !customerPhone || !customerAddress || !postTitle) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (paymentMethod && paymentMethod !== "COD" && (!transactionId || !paymentReference)) {
+      return NextResponse.json(
+        { error: "Transaction ID and screenshot/reference link are required for online payment." },
+        { status: 400 }
+      );
     }
 
     const newOrder = await Order.create({
       customerName,
+      motherName,
       customerEmail,
       customerPhone,
       customerAddress,
+      paymentMethod: paymentMethod || "COD",
+      transactionId,
+      paymentReference,
       postTitle,
       postPrice,
     });
