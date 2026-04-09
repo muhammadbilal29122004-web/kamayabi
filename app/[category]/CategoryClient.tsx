@@ -14,6 +14,48 @@ type ClientPost = {
   createdAt?: string;
 };
 
+type AddressZone = "UNKNOWN" | "KARACHI" | "PAKISTAN" | "UAE" | "UK" | "INTERNATIONAL";
+type CurrencyCode = "PKR" | "AED" | "GBP" | "USD";
+
+const KARACHI_KEYWORDS = ["karachi", "کراچی"];
+const PAKISTAN_KEYWORDS = [
+  "pakistan", "pk", "islamabad", "lahore", "punjab", "sindh", "sind", "kpk", "khyber",
+  "balochistan", "quetta", "peshawar", "multan", "faisalabad", "rawalpindi", "hyderabad",
+  "gilgit", "azad kashmir",
+];
+const UAE_KEYWORDS = [
+  "uae", "united arab emirates", "dubai", "abu dhabi", "sharjah", "ajman",
+  "ras al khaimah", "umm al quwain", "fujairah",
+];
+const UK_KEYWORDS = [
+  "uk", "united kingdom", "england", "scotland", "wales", "northern ireland",
+  "london", "manchester", "birmingham",
+];
+
+const CONVERSION_FROM_PKR: Record<CurrencyCode, number> = {
+  PKR: 1,
+  AED: 76,
+  GBP: 355,
+  USD: 280,
+};
+
+const parsePriceToPkr = (rawPrice?: string): number => {
+  if (!rawPrice) return 0;
+  const cleaned = rawPrice.replace(/[^0-9.]/g, "");
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const detectAddressZone = (address: string): AddressZone => {
+  const normalized = address.trim().toLowerCase();
+  if (!normalized) return "UNKNOWN";
+  if (KARACHI_KEYWORDS.some((keyword) => normalized.includes(keyword))) return "KARACHI";
+  if (UAE_KEYWORDS.some((keyword) => normalized.includes(keyword))) return "UAE";
+  if (UK_KEYWORDS.some((keyword) => normalized.includes(keyword))) return "UK";
+  if (PAKISTAN_KEYWORDS.some((keyword) => normalized.includes(keyword))) return "PAKISTAN";
+  return "INTERNATIONAL";
+};
+
 export default function CategoryClient({
   category,
   initialPosts,
@@ -25,10 +67,33 @@ export default function CategoryClient({
   const [showModal, setShowModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<ClientPost | null>(null);
   const [orderForm, setOrderForm] = useState({ name: "", motherName: "", address: "", phone: "" });
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "JAZZCASH_EASYPAISA" | "BANK_TRANSFER">("COD");
+  const [paymentMethod, setPaymentMethod] = useState<"JAZZCASH_EASYPAISA" | "BANK_TRANSFER">("JAZZCASH_EASYPAISA");
   const [transactionId, setTransactionId] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
   const [orderLoading, setOrderLoading] = useState(false);
+  const basePricePkr = useMemo(() => parsePriceToPkr(selectedPost?.price), [selectedPost?.price]);
+  const addressZone = useMemo(() => detectAddressZone(orderForm.address), [orderForm.address]);
+  const shippingChargePkr = useMemo(() => {
+    if (addressZone === "KARACHI") return 500;
+    if (addressZone === "PAKISTAN") return 800;
+    if (addressZone === "UAE" || addressZone === "UK" || addressZone === "INTERNATIONAL") return 8000;
+    return 0;
+  }, [addressZone]);
+  const selectedCurrency: CurrencyCode = useMemo(() => {
+    if (addressZone === "KARACHI" || addressZone === "PAKISTAN" || addressZone === "UNKNOWN") return "PKR";
+    if (addressZone === "UAE") return "AED";
+    if (addressZone === "UK") return "GBP";
+    return "USD";
+  }, [addressZone]);
+  const totalPricePkr = basePricePkr + shippingChargePkr;
+  const formatPrice = (amountPkr: number): string => {
+    const converted = amountPkr / CONVERSION_FROM_PKR[selectedCurrency];
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: selectedCurrency,
+      maximumFractionDigits: selectedCurrency === "PKR" ? 0 : 2,
+    }).format(converted);
+  };
 
   const Icon = useMemo(() => {
     switch (category.toLowerCase()) {
@@ -60,7 +125,7 @@ export default function CategoryClient({
     if (!orderForm.name || !orderForm.motherName || !orderForm.address || !orderForm.phone) {
       return alert("Please fill all details!");
     }
-    if (paymentMethod !== "COD" && (!transactionId || !paymentReference)) {
+    if (!transactionId || !paymentReference) {
       return alert("Please add transaction ID and screenshot/reference link.");
     }
 
@@ -85,7 +150,7 @@ export default function CategoryClient({
         alert("Order placed successfully! We will contact you soon.");
         setShowModal(false);
         setOrderForm({ name: "", motherName: "", address: "", phone: "" });
-        setPaymentMethod("COD");
+        setPaymentMethod("JAZZCASH_EASYPAISA");
         setTransactionId("");
         setPaymentReference("");
       } else {
@@ -267,18 +332,18 @@ export default function CategoryClient({
       {/* Order Modal */}
       {showModal && selectedPost ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative animate-in fade-in zoom-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in fade-in zoom-in duration-300">
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 rounded-full p-2"
             >
               <X size={20} />
             </button>
-            <div className="p-8">
+            <div className="p-5 sm:p-8">
               <h3 className="text-2xl font-bold text-[#0E3E26] mb-2">Checkout Details</h3>
               <p className="text-gray-500 mb-6 font-medium text-sm">
                 Ordering: <span className="text-green-600 font-bold">{selectedPost.title}</span>
-                {selectedPost.price ? ` (Rs. ${selectedPost.price})` : ""}
+                {selectedPost.price ? ` (${formatPrice(basePricePkr)})` : ""}
               </p>
 
               <form onSubmit={handleOrderSubmit} className="space-y-4">
@@ -329,22 +394,11 @@ export default function CategoryClient({
 
                 <div className="pt-2">
                   <p className="text-sm font-semibold text-gray-700 mb-2">Payment Method</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("COD")}
-                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition ${
-                        paymentMethod === "COD"
-                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      Cash on Delivery
-                    </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("JAZZCASH_EASYPAISA")}
-                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition ${
+                      className={`px-3 py-2.5 rounded-xl border text-sm font-bold leading-tight text-center break-words transition ${
                         paymentMethod === "JAZZCASH_EASYPAISA"
                           ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -355,7 +409,7 @@ export default function CategoryClient({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("BANK_TRANSFER")}
-                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition ${
+                      className={`px-3 py-2.5 rounded-xl border text-sm font-bold leading-tight text-center break-words transition ${
                         paymentMethod === "BANK_TRANSFER"
                           ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -384,32 +438,53 @@ export default function CategoryClient({
                   </div>
                 ) : null}
 
-                {paymentMethod !== "COD" ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700 block mb-1">Transaction ID</label>
-                      <input
-                        type="text"
-                        required
-                        value={transactionId}
-                        onChange={(e) => setTransactionId(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
-                        placeholder="Enter transaction ID"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700 block mb-1">Screenshot / Reference Link</label>
-                      <input
-                        type="text"
-                        required
-                        value={paymentReference}
-                        onChange={(e) => setPaymentReference(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
-                        placeholder="Paste screenshot link or reference"
-                      />
-                    </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">Transaction ID</label>
+                    <input
+                      type="text"
+                      required
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
+                      placeholder="Enter transaction ID"
+                    />
                   </div>
-                ) : null}
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">Screenshot / Reference Link</label>
+                    <input
+                      type="text"
+                      required
+                      value={paymentReference}
+                      onChange={(e) => setPaymentReference(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 border border-transparent"
+                      placeholder="Paste screenshot link or reference"
+                    />
+                  </div>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Item Price</span>
+                    <span className="font-semibold text-gray-900">{formatPrice(basePricePkr)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Shipping Charges</span>
+                    <span className="font-semibold text-gray-900">{formatPrice(shippingChargePkr)}</span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
+                    <span className="text-sm font-bold text-[#0E3E26]">Total</span>
+                    <span className="text-base font-extrabold text-emerald-700">{formatPrice(totalPricePkr)}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {addressZone === "UNKNOWN"
+                      ? "Enter address to auto-calculate shipping."
+                      : addressZone === "KARACHI"
+                        ? "Karachi address detected: shipping is 500 PKR."
+                        : addressZone === "PAKISTAN"
+                          ? "Pakistan address detected: shipping is 800 PKR."
+                          : "International address detected: shipping is 8000 PKR."}
+                  </p>
+                </div>
                 <button
                   type="submit"
                   disabled={orderLoading}
